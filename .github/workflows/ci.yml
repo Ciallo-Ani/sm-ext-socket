@@ -78,6 +78,11 @@ jobs:
       - name: Setting up ambuild
         working-directory: ambuild
         run: python setup.py install
+          
+      - name: Checking out own repository
+        uses: actions/checkout@v2
+        with:
+          path: Socket
 
       - name: Setting up Boost
         working-directory: Socket
@@ -85,11 +90,6 @@ jobs:
           wget --no-check-certificate https://boostorg.jfrog.io/artifactory/main/release/1.73.0/source/boost_1_73_0.7z
           7z x boost_1_73_0.7z > /dev/null
           7z x boost_stage.7z -oboost_1_73_0
-          
-      - name: Checking out own repository
-        uses: actions/checkout@v2
-        with:
-          path: Socket
 
       - name: Compiling Socket files
         working-directory: Socket
