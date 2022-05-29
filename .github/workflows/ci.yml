@@ -1,0 +1,105 @@
+name: build
+
+on:
+  push:
+    paths-ignore:
+    - LICENSE
+    - README.md
+  pull_request:
+    paths-ignore:
+    - LICENSE
+    - README.md
+
+jobs:
+  build:
+    name: build with sm${{ matrix.sm_version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-18.04
+          
+        sm_version:
+          - "1.10"
+          
+        include:
+          - sm_version: "1.10"
+            branch: "1.10-dev"
+            
+          - os: ubuntu-18.04
+            
+    steps:
+      - name: Prepare env
+        shell: bash
+        run: |
+          echo "GITHUB_SHA_SHORT=${GITHUB_SHA::7}" >> $GITHUB_ENV
+          
+      - name: Install Linux Dependencies
+        shell: bash
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y clang g++-multilib
+          echo "CC=clang" >> $GITHUB_ENV
+          echo "CXX=clang++" >> $GITHUB_ENV
+          
+      - name: Checking out SourceMod
+        uses: actions/checkout@v2
+        with:
+          repository: alliedmodders/sourcemod
+          ref: ${{ matrix.branch }}
+          path: sourcemod-${{ matrix.sm_version }}
+          submodules: recursive
+          
+      - name: Checking out MM:Source
+        uses: actions/checkout@v2
+        with:
+          repository: alliedmodders/metamod-source
+          ref: ${{ matrix.branch }}
+          path: metamod-${{ matrix.sm_version }}
+
+      - name: Checking out HL2SDK
+        uses: actions/checkout@v2
+        with:
+          repository: alliedmodders/hl2sdk
+          ref: csgo
+          path: hl2sdk-csgo
+          
+      - name: Checking out AMBuild
+        uses: actions/checkout@v2
+        with:
+          repository: alliedmodders/ambuild
+          path: ambuild
+
+      - name: Setting up Python
+        uses: actions/setup-python@v2
+        
+      - name: Setting up ambuild
+        working-directory: ambuild
+        run: python setup.py install
+
+      - name: Setting up Boost
+        run: |
+          wget --no-check-certificate https://dl.bintray.com/boostorg/release/1.73.0/source/boost_1_73_0.7z
+          7z x boost_1_73_0.7z > /dev/null
+          7z x boost_stage.7z -oboost_1_73_0
+          
+      - name: Checking out own repository
+        uses: actions/checkout@v2
+        with:
+          path: Socket
+
+      - name: Compiling Socket files
+        working-directory: Socket
+        run: |
+          mkdir build
+          cd build
+          python ../configure.py --enable-optimize --sm-path="${{ github.workspace }}/sourcemod-${{ matrix.sm_version }}" --mms-path="${{ github.workspace }}/metamod-${{ matrix.sm_version }}" --hl2sdk-root "${{ github.workspace }}" --sdks=csgo
+          ambuild
+          
+      - name: Uploading package
+        uses: actions/upload-artifact@v2
+        with:
+          name: Socket-sm${{ matrix.sm_version }}-${{ matrix.os }}-${{ env.GITHUB_SHA_SHORT }}
+          path: Socket/build/package
