@@ -80,6 +80,7 @@ jobs:
         run: python setup.py install
 
       - name: Setting up Boost
+        working-directory: Socket
         run: |
           wget --no-check-certificate https://boostorg.jfrog.io/artifactory/main/release/1.73.0/source/boost_1_73_0.7z
           7z x boost_1_73_0.7z > /dev/null
